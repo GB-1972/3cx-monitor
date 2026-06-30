@@ -233,64 +233,72 @@ function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: str
   );
 }
 
+function CheckMark({ check }: { check?: HealthCheck }) {
+  const status = check?.status || "unknown";
+  const title = check ? `${check.name}: ${check.message}` : "Check nicht vorhanden";
+  return (
+    <span className={`checkMark ${status}`} title={title}>
+      <StatusIcon status={status} />
+    </span>
+  );
+}
+
 function Dashboard({ snapshots, onSelect }: { snapshots: Snapshot[]; onSelect: (id: number) => void }) {
-  const totals = snapshots.reduce(
-    (acc, snapshot) => {
-      acc.total += 1;
-      acc[snapshot.status] += 1;
-      return acc;
-    },
-    { total: 0, ok: 0, warning: 0, critical: 0, unknown: 0 }
+  const checkNames = Array.from(
+    new Set(snapshots.flatMap((snapshot) => (snapshot.data.checks || []).map((check) => check.name)))
   );
 
   return (
     <section className="dashboard">
-      <div className="overviewMetrics">
-        <SummaryCard icon={<Server size={18} />} label="Anlagen" value={totals.total} />
-        <SummaryCard icon={<CheckCircle2 size={18} />} label="OK" value={totals.ok} />
-        <SummaryCard icon={<AlertTriangle size={18} />} label="Warnungen" value={totals.warning} />
-        <SummaryCard icon={<XCircle size={18} />} label="Kritisch" value={totals.critical} />
-      </div>
-
-      <div className="customerGrid">
-        {snapshots.length === 0 && (
-          <section className="empty">
-            <Server size={34} />
-            <p>Noch keine Anlagen.</p>
-          </section>
-        )}
-        {snapshots.map((snapshot) => {
-          const summary = snapshot.data.summary || {};
-          const checks = snapshot.data.checks || [];
-          return (
-            <button className="customerCard" key={snapshot.installation_id} onClick={() => onSelect(snapshot.installation_id)}>
-              <div className="customerCardHeader">
-                <div>
-                  <strong>{snapshot.customer_name}</strong>
-                  <span>{snapshot.base_url}</span>
-                </div>
-                <Pill status={snapshot.status} />
-              </div>
-              <div className="customerFacts">
-                <span>Calls: {fmt(summary.active_calls)}</span>
-                <span>Trunks: {fmt(summary.trunks_registered)}/{fmt(summary.trunks_total)}</span>
-                <span>Backup: {fmtDate(summary.last_backup)}</span>
-              </div>
-              <div className="miniChecks">
-                {checks.length === 0 && <span className="muted">Noch keine Checks vorhanden.</span>}
-                {checks.map((check) => (
-                  <div className="miniCheck" key={check.name}>
-                    <StatusIcon status={check.status} />
-                    <span>{check.name}</span>
-                    <small>{check.message}</small>
-                  </div>
+      {snapshots.length === 0 && (
+        <section className="empty">
+          <Server size={34} />
+          <p>Noch keine Anlagen.</p>
+        </section>
+      )}
+      {snapshots.length > 0 && (
+        <div className="healthTableWrap">
+          <table className="healthTable">
+            <thead>
+              <tr>
+                <th>Kunde</th>
+                {checkNames.map((name) => (
+                  <th key={name}>{name}</th>
                 ))}
-              </div>
-              <div className="footerNote">Zuletzt geprüft: {fmtDate(snapshot.checked_at)}</div>
-            </button>
-          );
-        })}
-      </div>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snapshots.map((snapshot) => {
+                const checks = snapshot.data.checks || [];
+                return (
+                  <tr
+                    className={`healthRow ${snapshot.status}`}
+                    key={snapshot.installation_id}
+                    onClick={() => onSelect(snapshot.installation_id)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") onSelect(snapshot.installation_id);
+                    }}
+                  >
+                    <td>
+                      <strong>{snapshot.customer_name}</strong>
+                    </td>
+                    {checkNames.map((name) => (
+                      <td className="checkCell" key={name}>
+                        <CheckMark check={checks.find((check) => check.name === name)} />
+                      </td>
+                    ))}
+                    <td>
+                      <Pill status={snapshot.status} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
