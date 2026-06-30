@@ -15,6 +15,7 @@ Collected endpoints:
 - `GET /xapi/v1/EventLogs?$top=5&$orderby=TimeGenerated desc`
 - `GET /xapi/v1/CrmIntegration`
 - `GET /xapi/v1/Sbcs?$top=100`
+- `POST /xapi/v1/Services/Pbx.RestartOperatingSystem`
 
 Notes:
 

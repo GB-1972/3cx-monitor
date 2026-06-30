@@ -52,7 +52,28 @@ class ThreeCxConnector:
             raise ThreeCxError(f"3CX request {path} failed with HTTP {response.status_code}")
         if not response.content:
             return None
-        return response.json()
+        try:
+            return response.json()
+        except ValueError:
+            return {"body": response.text}
+
+    async def _post(self, client: httpx.AsyncClient, token: str, path: str, payload: dict[str, Any] | None = None) -> Any:
+        try:
+            response = await client.post(
+                f"{self.base_url}{path}",
+                json=payload or {},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        except httpx.RequestError as exc:
+            raise ThreeCxError(f"3CX request failed for {path}: {exc}") from exc
+        if response.status_code >= 400:
+            raise ThreeCxError(f"3CX request {path} failed with HTTP {response.status_code}")
+        if not response.content:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return {"body": response.text}
 
     @staticmethod
     def _values(payload: Any) -> list[dict[str, Any]]:
@@ -153,3 +174,8 @@ class ThreeCxConnector:
         evaluated = self._evaluate(raw)
         evaluated["checked_at"] = datetime.now(timezone.utc).isoformat()
         return evaluated
+
+    async def restart_operating_system(self) -> None:
+        async with httpx.AsyncClient(timeout=self.timeout, verify=True) as client:
+            token = await self._token(client)
+            await self._post(client, token, "/xapi/v1/Services/Pbx.RestartOperatingSystem")

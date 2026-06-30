@@ -12,7 +12,8 @@ from .config import Settings, get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import Installation, Snapshot
 from .schemas import InstallationCreate, InstallationOut, InstallationUpdate, LoginRequest, LoginResponse, SnapshotOut
-from .security import encrypt_secret, require_admin, sign_token, verify_login
+from .connector import ThreeCxConnector, ThreeCxError
+from .security import decrypt_secret, encrypt_secret, require_admin, sign_token, verify_login
 from .service import collect_installation, latest_snapshot, snapshot_payload
 
 
@@ -211,3 +212,26 @@ async def refresh_installation(
         raise HTTPException(status_code=404, detail="Installation not found")
     snapshot = await collect_installation(db, installation, settings)
     return snapshot_payload(installation, snapshot)
+
+
+@app.post("/api/installations/{installation_id}/reboot-os")
+async def reboot_operating_system(
+    installation_id: int,
+    _: dict = Depends(require_admin),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    installation = db.get(Installation, installation_id)
+    if not installation:
+        raise HTTPException(status_code=404, detail="Installation not found")
+    try:
+        connector = ThreeCxConnector(
+            base_url=installation.base_url,
+            client_id=installation.client_id,
+            client_secret=decrypt_secret(installation.client_secret_encrypted, settings),
+            timeout=settings.request_timeout_seconds,
+        )
+        await connector.restart_operating_system()
+    except ThreeCxError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"status": "requested"}

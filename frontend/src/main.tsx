@@ -11,6 +11,7 @@ import {
   PhoneCall,
   Plus,
   MonitorCheck,
+  Power,
   RefreshCw,
   Save,
   Server,
@@ -243,7 +244,15 @@ function CheckMark({ check }: { check?: HealthCheck }) {
   );
 }
 
-function Dashboard({ snapshots, onSelect }: { snapshots: Snapshot[]; onSelect: (id: number) => void }) {
+function Dashboard({
+  snapshots,
+  onSelect,
+  onReboot
+}: {
+  snapshots: Snapshot[];
+  onSelect: (id: number) => void;
+  onReboot: (snapshot: Snapshot) => void;
+}) {
   const totals = snapshots.reduce(
     (acc, snapshot) => {
       acc.total += 1;
@@ -281,6 +290,7 @@ function Dashboard({ snapshots, onSelect }: { snapshots: Snapshot[]; onSelect: (
                   <th key={name}>{name}</th>
                 ))}
                 <th>Status</th>
+                <th>Aktion</th>
               </tr>
             </thead>
             <tbody>
@@ -307,6 +317,20 @@ function Dashboard({ snapshots, onSelect }: { snapshots: Snapshot[]; onSelect: (
                     <td>
                       <Pill status={snapshot.status} />
                     </td>
+                    <td>
+                      <button
+                        className="dangerText"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onReboot(snapshot);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        title="OS neu starten"
+                      >
+                        <Power size={16} />
+                        OS neu starten
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -318,7 +342,15 @@ function Dashboard({ snapshots, onSelect }: { snapshots: Snapshot[]; onSelect: (
   );
 }
 
-function Detail({ snapshot, onRefresh }: { snapshot: Snapshot | null; onRefresh: (id: number) => void }) {
+function Detail({
+  snapshot,
+  onRefresh,
+  onReboot
+}: {
+  snapshot: Snapshot | null;
+  onRefresh: (id: number) => void;
+  onReboot: (snapshot: Snapshot) => void;
+}) {
   if (!snapshot) {
     return (
       <section className="empty">
@@ -346,10 +378,16 @@ function Detail({ snapshot, onRefresh }: { snapshot: Snapshot | null; onRefresh:
             <ExternalLink size={14} />
           </a>
         </div>
-        <button className="iconText" onClick={() => onRefresh(snapshot.installation_id)} title="Jetzt aktualisieren">
-          <RefreshCw size={16} />
-          Aktualisieren
-        </button>
+        <div className="detailActions">
+          <button className="iconText" onClick={() => onRefresh(snapshot.installation_id)} title="Jetzt aktualisieren">
+            <RefreshCw size={16} />
+            Aktualisieren
+          </button>
+          <button className="dangerText" onClick={() => onReboot(snapshot)} title="OS neu starten">
+            <Power size={16} />
+            OS neu starten
+          </button>
+        </div>
       </div>
 
       <div className="metrics">
@@ -465,6 +503,23 @@ function App() {
     }
   }
 
+  async function reboot(snapshot: Snapshot) {
+    const confirmed = confirm(
+      `Soll die 3CX-Anlage von ${snapshot.customer_name} wirklich neu gestartet werden?\n\nDas startet das Betriebssystem neu und unterbricht laufende Telefonie.`
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api<{ status: string }>(`/api/installations/${snapshot.installation_id}/reboot-os`, { method: "POST" });
+      alert(`Neustart für ${snapshot.customer_name} wurde angefordert.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Neustart konnte nicht angefordert werden");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove(id: number) {
     if (!confirm("Anlage wirklich löschen?")) return;
     await api(`/api/installations/${id}`, { method: "DELETE" });
@@ -563,7 +618,11 @@ function App() {
           </section>
         )}
 
-        {selected ? <Detail snapshot={selected} onRefresh={refresh} /> : <Dashboard snapshots={snapshots} onSelect={selectInstallation} />}
+        {selected ? (
+          <Detail snapshot={selected} onRefresh={refresh} onReboot={reboot} />
+        ) : (
+          <Dashboard snapshots={snapshots} onSelect={selectInstallation} onReboot={reboot} />
+        )}
       </section>
     </main>
   );

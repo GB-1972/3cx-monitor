@@ -144,6 +144,7 @@ a {
 .primary,
 .iconText,
 .ghost,
+.dangerText,
 .dangerIcon {
   align-items: center;
   border: 0;
@@ -183,6 +184,20 @@ a {
   color: #b42318;
   padding: 0;
   width: 36px;
+}
+
+.dangerText {
+  background: #fee4e2;
+  color: #b42318;
+  font-weight: 800;
+}
+
+.detailActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .detail,
