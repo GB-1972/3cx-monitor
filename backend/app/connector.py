@@ -1,0 +1,225 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any
+
+import httpx
+
+
+class ThreeCxError(Exception):
+    pass
+
+
+class ThreeCxConnector:
+    def __init__(self, base_url: str, client_id: str, client_secret: str, timeout: float = 12.0):
+        self.base_url = base_url.rstrip("/")
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.timeout = timeout
+
+    async def _token(self, client: httpx.AsyncClient) -> str:
+        try:
+            response = await client.post(
+                f"{self.base_url}/connect/token",
+                data={
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "grant_type": "client_credentials",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        except httpx.RequestError as exc:
+            raise ThreeCxError(f"3CX not reachable: {exc}") from exc
+        if response.status_code >= 400:
+            raise ThreeCxError(f"3CX authentication failed with HTTP {response.status_code}")
+        token = response.json().get("access_token")
+        if not token:
+            raise ThreeCxError("3CX authentication did not return an access token")
+        return token
+
+    async def _get(self, client: httpx.AsyncClient, token: str, path: str, params: dict[str, Any] | None = None) -> Any:
+        try:
+            response = await client.get(
+                f"{self.base_url}{path}",
+                params=params,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        except httpx.RequestError as exc:
+            raise ThreeCxError(f"3CX request failed for {path}: {exc}") from exc
+        if response.status_code == 404:
+            return None
+        if response.status_code >= 400:
+            raise ThreeCxError(f"3CX request {path} failed with HTTP {response.status_code}")
+        if not response.content:
+            return None
+        return response.json()
+
+    @staticmethod
+    def _values(payload: Any) -> list[dict[str, Any]]:
+        if isinstance(payload, dict) and isinstance(payload.get("value"), list):
+            return payload["value"]
+        if isinstance(payload, list):
+            return payload
+        return []
+
+    @staticmethod
+    def _health(name: str, status: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
+        return {"name": name, "status": status, "message": message, "details": details or {}}
+
+    def _evaluate(self, raw: dict[str, Any]) -> dict[str, Any]:
+        system = raw.get("system_status") or {}
+        trunks = self._values(raw.get("trunks"))
+        events = self._values(raw.get("event_logs"))
+        sbcs = self._values(raw.get("sbcs"))
+        backup_settings = raw.get("backup_settings") or {}
+        console_restrictions = raw.get("console_restrictions") or {}
+        logging_settings = raw.get("logging_settings") or {}
+        e164 = raw.get("e164_settings") or {}
+        crm = raw.get("crm_integration") or {}
+        teams = raw.get("teams_integration") or {}
+        emergency_rules = self._values(raw.get("emergency_rules"))
+
+        checks: list[dict[str, Any]] = []
+
+        trunks_total = system.get("TrunksTotal", len(trunks))
+        trunks_registered = system.get("TrunksRegistered")
+        trunks_online = sum(1 for trunk in trunks if trunk.get("IsOnline") is True)
+        if trunks:
+            checks.append(self._health(
+                "SIP trunks",
+                "ok" if trunks_online == len(trunks) else "critical",
+                f"{trunks_online}/{len(trunks)} SIP trunks online",
+                {"trunks": trunks},
+            ))
+        elif trunks_total is not None and trunks_registered is not None:
+            checks.append(self._health(
+                "SIP trunks",
+                "ok" if trunks_registered == trunks_total else "critical",
+                f"{trunks_registered}/{trunks_total} SIP trunks registered",
+            ))
+
+        checks.append(self._health(
+            "3CX services",
+            "critical" if system.get("HasNotRunningServices") else "ok",
+            "One or more 3CX services are not running" if system.get("HasNotRunningServices") else "No stopped services reported by XAPI",
+        ))
+
+        if backup_settings:
+            schedule_enabled = backup_settings.get("ScheduleEnabled")
+            encrypt_backup = backup_settings.get("EncryptBackup")
+            checks.append(self._health(
+                "Backup schedule",
+                "ok" if schedule_enabled else "critical",
+                "Automatic backup is enabled" if schedule_enabled else "Automatic backup is disabled",
+            ))
+            checks.append(self._health(
+                "Backup encryption",
+                "ok" if encrypt_backup else "warning",
+                "Backup encryption is enabled" if encrypt_backup else "Backup encryption is disabled",
+            ))
+
+        if console_restrictions:
+            restricted = console_restrictions.get("AccessRestricted")
+            checks.append(self._health(
+                "Console restrictions",
+                "ok" if restricted else "warning",
+                "Console access is restricted" if restricted else "Console access is not restricted",
+            ))
+
+        if logging_settings:
+            level = logging_settings.get("LoggingLevel")
+            keep = logging_settings.get("KeepLogs")
+            status = "ok"
+            if level in (0, 3):
+                status = "warning"
+            if keep is False:
+                status = "warning"
+            checks.append(self._health(
+                "Logging",
+                status,
+                f"Log level {level}, retention {'enabled' if keep else 'disabled'}",
+                logging_settings,
+            ))
+
+        if e164:
+            checks.append(self._health(
+                "E.164 processing",
+                "warning" if e164.get("Enabled") else "ok",
+                "E.164 processing is enabled" if e164.get("Enabled") else "E.164 processing is disabled",
+            ))
+
+        if crm:
+            name = crm.get("Name")
+            checks.append(self._health(
+                "CRM integration",
+                "warning" if name and name != "CRM.NoneCrmSelected" else "ok",
+                f"CRM integration active: {name}" if name and name != "CRM.NoneCrmSelected" else "No CRM integration active",
+            ))
+
+        if isinstance(teams, dict):
+            checks.append(self._health(
+                "Microsoft Teams",
+                "warning" if teams.get("Enabled") else "ok",
+                "Teams Direct Routing is enabled" if teams.get("Enabled") else "Teams Direct Routing is disabled",
+            ))
+
+        checks.append(self._health(
+            "Emergency rules",
+            "ok" if emergency_rules else "critical",
+            f"{len(emergency_rules)} emergency rule(s) configured" if emergency_rules else "No emergency outbound rules configured",
+        ))
+
+        if sbcs:
+            connected = sum(1 for sbc in sbcs if sbc.get("HasConnection") is True)
+            checks.append(self._health(
+                "SBCs",
+                "ok" if connected == len(sbcs) else "critical",
+                f"{connected}/{len(sbcs)} SBCs connected",
+                {"sbcs": sbcs},
+            ))
+
+        return {
+            "summary": {
+                "fqdn": system.get("FQDN"),
+                "version": system.get("Version"),
+                "active_calls": system.get("CallsActive", len(self._values(raw.get("active_calls")))),
+                "max_sim_calls": system.get("MaxSimCalls"),
+                "trunks_registered": trunks_registered,
+                "trunks_total": trunks_total,
+                "extensions_registered": system.get("ExtensionsRegistered"),
+                "extensions_total": system.get("ExtensionsTotal"),
+                "last_backup": system.get("LastBackupDateTime"),
+                "backup_scheduled": system.get("BackupScheduled"),
+                "license_active": system.get("LicenseActive", system.get("Activated")),
+                "license_expires": system.get("ExpirationDate"),
+                "product_code": system.get("ProductCode"),
+                "maintenance_expires": system.get("MaintenanceExpiresAt"),
+                "has_not_running_services": system.get("HasNotRunningServices"),
+            },
+            "trunks": trunks,
+            "events": events[:5],
+            "checks": checks,
+            "raw": raw,
+        }
+
+    async def snapshot(self) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=self.timeout, verify=True) as client:
+            token = await self._token(client)
+            raw = {
+                "system_status": await self._get(client, token, "/xapi/v1/SystemStatus"),
+                "trunks": await self._get(client, token, "/xapi/v1/Trunks", {"$top": 100}),
+                "active_calls": await self._get(client, token, "/xapi/v1/ActiveCalls", {"$top": 100, "$orderby": "EstablishedAt asc"}),
+                "event_logs": await self._get(client, token, "/xapi/v1/EventLogs", {"$top": 5, "$orderby": "TimeGenerated desc"}),
+                "backup_settings": await self._get(client, token, "/xapi/v1/Backups/Pbx.GetBackupSettings()"),
+                "console_restrictions": await self._get(client, token, "/xapi/v1/ConsoleRestrictions"),
+                "logging_settings": await self._get(client, token, "/xapi/v1/LoggingSettings"),
+                "e164_settings": await self._get(client, token, "/xapi/v1/E164Settings"),
+                "crm_integration": await self._get(client, token, "/xapi/v1/CrmIntegration"),
+                "teams_integration": await self._get(client, token, "/xapi/v1/Microsoft365TeamsIntegration"),
+                "emergency_rules": await self._get(client, token, "/xapi/v1/OutboundRules/Pbx.GetEmergencyOutboundRules()"),
+                "sbcs": await self._get(client, token, "/xapi/v1/Sbcs", {"$top": 100}),
+            }
+        evaluated = self._evaluate(raw)
+        evaluated["checked_at"] = datetime.now(timezone.utc).isoformat()
+        return evaluated
+

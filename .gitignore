@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+backend/data/
+backend/.venv/
+backend/__pycache__/
+backend/app/__pycache__/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+*.pyc
+*.tar.gz
