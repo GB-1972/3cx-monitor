@@ -13,11 +13,11 @@ If this port is already in use on the target server, change it in `deploy/docker
 
 ## First Deployment
 
-Preferred deployment uses prebuilt GitHub Container Registry images. You can use the compose file directly without cloning the repository.
+Preferred deployment for Portainer uses a compose file that builds directly from this public GitHub repository. That avoids GHCR registry authentication.
 
 ### Portainer Web Editor
 
-Open Portainer, create a new Stack, paste `deploy/docker-compose.yml`, change the passwords and deploy. The compose file contains plain values instead of `${...}` variables, so it is suitable for copy/paste into the Portainer web editor.
+Open Portainer, create a new Stack, paste `deploy/docker-compose.portainer-build.yml`, change the passwords and deploy. The compose file contains plain values instead of `${...}` variables, so it is suitable for copy/paste into the Portainer web editor.
 
 For a first-run setup, set:
 
@@ -32,8 +32,7 @@ For a first-run setup, set:
 Download only the stack file:
 
 ```bash
-curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-monitor/main/deploy/docker-compose.yml
-nano .env
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-monitor/main/deploy/docker-compose.portainer-build.yml
 docker compose up -d
 ```
 
@@ -50,7 +49,7 @@ docker compose -f docker-compose.images.yml pull
 docker compose -f docker-compose.images.yml up -d
 ```
 
-If the GHCR packages are private, add GHCR as an authenticated Portainer registry or authenticate Docker first with a GitHub token that has `read:packages`:
+The GHCR image stack is available as `deploy/docker-compose.yml`. If the GHCR packages are private, add GHCR as an authenticated Portainer registry or authenticate Docker first with a GitHub token that has `read:packages`:
 
 ```bash
 echo "GITHUB_TOKEN_WITH_READ_PACKAGES" | docker login ghcr.io -u GB-1972 --password-stdin

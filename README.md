@@ -4,17 +4,18 @@ Web dashboard for monitoring multiple 3CX v20 systems through the 3CX XAPI.
 
 ## Quick Start
 
-### Server Deployment With Images
+### Server Deployment With Portainer
 
-You do not need to clone the repository if your Docker host or Portainer only needs a stack file. Use `deploy/docker-compose.yml` as the ready-to-run stack file.
+You do not need to clone the repository if your Docker host or Portainer only needs a stack file.
 
-For Portainer: create a new Stack, paste the content of `deploy/docker-compose.yml`, change the placeholder values, and deploy. The file does not use `${...}` variables, so Portainer can run it directly from the web editor.
+For Portainer without GHCR registry login: create a new Stack, paste the content of `deploy/docker-compose.portainer-build.yml`, change the placeholder values, and deploy. Portainer builds the backend and frontend directly from this public GitHub repository.
 
 ```bash
-curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-monitor/main/deploy/docker-compose.yml
-nano .env
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-monitor/main/deploy/docker-compose.portainer-build.yml
 docker compose up -d
 ```
+
+The prebuilt-image stack is still available as `deploy/docker-compose.yml`.
 
 If you prefer working from the repo:
 
