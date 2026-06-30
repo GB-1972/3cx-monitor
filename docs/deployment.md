@@ -7,14 +7,39 @@ Target: ADICOM server with existing Docker containers.
 The compose file exposes:
 
 - Frontend: `8088`
-- Backend API: `8089`
 - Postgres: internal only
 
-If these ports are already in use on the target server, change them in `docker-compose.images.yml`.
+If this port is already in use on the target server, change it in `deploy/docker-compose.yml`.
 
 ## First Deployment
 
-Preferred deployment uses prebuilt GitHub Container Registry images:
+Preferred deployment uses prebuilt GitHub Container Registry images. You can use the compose file directly without cloning the repository.
+
+### Without Clone
+
+Download only the stack file:
+
+```bash
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-monitor/main/deploy/docker-compose.yml
+nano .env
+docker compose up -d
+```
+
+Minimal `.env`:
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-password
+APP_SECRET_KEY=change-this-to-a-long-random-secret
+POSTGRES_PASSWORD=change-this-db-password
+CORS_ORIGINS=http://SERVER-IP:8088
+```
+
+In Portainer, paste `deploy/docker-compose.yml` into a new Stack and either define those variables in the Stack environment or edit the placeholders directly in the YAML.
+
+### With Clone
+
+Clone only if you want the full source tree on the server:
 
 ```bash
 git clone git@github.com:GB-1972/3cx-monitor.git
@@ -25,7 +50,7 @@ docker compose -f docker-compose.images.yml pull
 docker compose -f docker-compose.images.yml up -d
 ```
 
-If the GHCR packages are private, authenticate Docker first with a GitHub token that has `read:packages`:
+If the GHCR packages are private, add GHCR as an authenticated Portainer registry or authenticate Docker first with a GitHub token that has `read:packages`:
 
 ```bash
 echo "GITHUB_TOKEN_WITH_READ_PACKAGES" | docker login ghcr.io -u GB-1972 --password-stdin

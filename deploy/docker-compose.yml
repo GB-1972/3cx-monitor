@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-3cxmonitor}
+      POSTGRES_USER: ${POSTGRES_USER:-3cxmonitor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-db-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-3cxmonitor} -d ${POSTGRES_DB:-3cxmonitor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/gb-1972/3cx-monitor-backend:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-this-password}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-change-this-to-a-long-random-secret}
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-3cxmonitor}:${POSTGRES_PASSWORD:-change-this-db-password}@postgres:5432/${POSTGRES_DB:-3cxmonitor}"
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-30}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-12}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8088}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    image: ghcr.io/gb-1972/3cx-monitor-frontend:latest
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8088:80"
+
+volumes:
+  postgres_data:

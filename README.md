@@ -6,6 +6,28 @@ Web dashboard for monitoring multiple 3CX v20 systems through the 3CX XAPI.
 
 ### Server Deployment With Images
 
+You do not need to clone the repository if your Docker host or Portainer only needs a stack file. Use `deploy/docker-compose.yml` as the ready-to-run stack file and set the variables in Portainer or in a local `.env`.
+
+For Portainer: create a new Stack, paste the content of `deploy/docker-compose.yml`, change the placeholder values, and deploy.
+
+```bash
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-monitor/main/deploy/docker-compose.yml
+nano .env
+docker compose up -d
+```
+
+Required `.env` values:
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-password
+APP_SECRET_KEY=change-this-to-a-long-random-secret
+POSTGRES_PASSWORD=change-this-db-password
+CORS_ORIGINS=http://SERVER-IP:8088
+```
+
+If you prefer working from the repo:
+
 ```bash
 git clone git@github.com:GB-1972/3cx-monitor.git
 cd 3cx-monitor
@@ -15,7 +37,7 @@ docker compose -f docker-compose.images.yml pull
 docker compose -f docker-compose.images.yml up -d
 ```
 
-If the GHCR packages are private, log in on the Docker server first:
+If the GHCR packages are private, configure GHCR as an authenticated registry in Portainer, or log in on the Docker server first:
 
 ```bash
 echo "GITHUB_TOKEN_WITH_READ_PACKAGES" | docker login ghcr.io -u GB-1972 --password-stdin
@@ -31,7 +53,7 @@ docker compose up -d --build
 
 Open `http://SERVER-IP:8088`.
 
-The backend listens on `8089` and the frontend on `8088`. Put Caddy, nginx, or Traefik in front of the frontend for TLS.
+The frontend listens on `8088` and proxies `/api` to the backend internally. Put Caddy, nginx, or Traefik in front of the frontend for TLS.
 
 ## 3CX Requirements
 
