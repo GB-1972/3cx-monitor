@@ -349,7 +349,10 @@ function App() {
       ]);
       setInstallations(items);
       setSnapshots(dashboard);
-      if (!selectedId && dashboard[0]) setSelectedId(dashboard[0].installation_id);
+      setSelectedId((current) => {
+        if (current && dashboard.some((item) => item.installation_id === current)) return current;
+        return dashboard[0]?.installation_id ?? null;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Daten konnten nicht geladen werden");
     }
@@ -472,4 +475,3 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>
 );
-
