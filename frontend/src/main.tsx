@@ -328,7 +328,6 @@ function Dashboard({
                         title="OS neu starten"
                       >
                         <Power size={16} />
-                        OS neu starten
                       </button>
                     </td>
                   </tr>
@@ -385,7 +384,6 @@ function Detail({
           </button>
           <button className="dangerText" onClick={() => onReboot(snapshot)} title="OS neu starten">
             <Power size={16} />
-            OS neu starten
           </button>
         </div>
       </div>

@@ -187,9 +187,12 @@ a {
 }
 
 .dangerText {
+  aspect-ratio: 1;
   background: #fee4e2;
   color: #b42318;
   font-weight: 800;
+  padding: 0;
+  width: 38px;
 }
 
 .detailActions {
