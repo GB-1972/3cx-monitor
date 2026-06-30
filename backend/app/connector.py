@@ -71,13 +71,7 @@ class ThreeCxConnector:
         trunks = self._values(raw.get("trunks"))
         events = self._values(raw.get("event_logs"))
         sbcs = self._values(raw.get("sbcs"))
-        backup_settings = raw.get("backup_settings") or {}
-        console_restrictions = raw.get("console_restrictions") or {}
-        logging_settings = raw.get("logging_settings") or {}
-        e164 = raw.get("e164_settings") or {}
         crm = raw.get("crm_integration") or {}
-        teams = raw.get("teams_integration") or {}
-        emergency_rules = self._values(raw.get("emergency_rules"))
 
         checks: list[dict[str, Any]] = []
 
@@ -104,50 +98,6 @@ class ThreeCxConnector:
             "One or more 3CX services are not running" if system.get("HasNotRunningServices") else "No stopped services reported by XAPI",
         ))
 
-        if backup_settings:
-            schedule_enabled = backup_settings.get("ScheduleEnabled")
-            encrypt_backup = backup_settings.get("EncryptBackup")
-            checks.append(self._health(
-                "Backup schedule",
-                "ok" if schedule_enabled else "critical",
-                "Automatic backup is enabled" if schedule_enabled else "Automatic backup is disabled",
-            ))
-            checks.append(self._health(
-                "Backup encryption",
-                "ok" if encrypt_backup else "warning",
-                "Backup encryption is enabled" if encrypt_backup else "Backup encryption is disabled",
-            ))
-
-        if console_restrictions:
-            restricted = console_restrictions.get("AccessRestricted")
-            checks.append(self._health(
-                "Console restrictions",
-                "ok" if restricted else "warning",
-                "Console access is restricted" if restricted else "Console access is not restricted",
-            ))
-
-        if logging_settings:
-            level = logging_settings.get("LoggingLevel")
-            keep = logging_settings.get("KeepLogs")
-            status = "ok"
-            if level in (0, 3):
-                status = "warning"
-            if keep is False:
-                status = "warning"
-            checks.append(self._health(
-                "Logging",
-                status,
-                f"Log level {level}, retention {'enabled' if keep else 'disabled'}",
-                logging_settings,
-            ))
-
-        if e164:
-            checks.append(self._health(
-                "E.164 processing",
-                "warning" if e164.get("Enabled") else "ok",
-                "E.164 processing is enabled" if e164.get("Enabled") else "E.164 processing is disabled",
-            ))
-
         if crm:
             name = crm.get("Name")
             checks.append(self._health(
@@ -155,19 +105,6 @@ class ThreeCxConnector:
                 "warning" if name and name != "CRM.NoneCrmSelected" else "ok",
                 f"CRM integration active: {name}" if name and name != "CRM.NoneCrmSelected" else "No CRM integration active",
             ))
-
-        if isinstance(teams, dict):
-            checks.append(self._health(
-                "Microsoft Teams",
-                "warning" if teams.get("Enabled") else "ok",
-                "Teams Direct Routing is enabled" if teams.get("Enabled") else "Teams Direct Routing is disabled",
-            ))
-
-        checks.append(self._health(
-            "Emergency rules",
-            "ok" if emergency_rules else "critical",
-            f"{len(emergency_rules)} emergency rule(s) configured" if emergency_rules else "No emergency outbound rules configured",
-        ))
 
         if sbcs:
             connected = sum(1 for sbc in sbcs if sbc.get("HasConnection") is True)
@@ -210,16 +147,9 @@ class ThreeCxConnector:
                 "trunks": await self._get(client, token, "/xapi/v1/Trunks", {"$top": 100}),
                 "active_calls": await self._get(client, token, "/xapi/v1/ActiveCalls", {"$top": 100, "$orderby": "EstablishedAt asc"}),
                 "event_logs": await self._get(client, token, "/xapi/v1/EventLogs", {"$top": 5, "$orderby": "TimeGenerated desc"}),
-                "backup_settings": await self._get(client, token, "/xapi/v1/Backups/Pbx.GetBackupSettings()"),
-                "console_restrictions": await self._get(client, token, "/xapi/v1/ConsoleRestrictions"),
-                "logging_settings": await self._get(client, token, "/xapi/v1/LoggingSettings"),
-                "e164_settings": await self._get(client, token, "/xapi/v1/E164Settings"),
                 "crm_integration": await self._get(client, token, "/xapi/v1/CrmIntegration"),
-                "teams_integration": await self._get(client, token, "/xapi/v1/Microsoft365TeamsIntegration"),
-                "emergency_rules": await self._get(client, token, "/xapi/v1/OutboundRules/Pbx.GetEmergencyOutboundRules()"),
                 "sbcs": await self._get(client, token, "/xapi/v1/Sbcs", {"$top": 100}),
             }
         evaluated = self._evaluate(raw)
         evaluated["checked_at"] = datetime.now(timezone.utc).isoformat()
         return evaluated
-

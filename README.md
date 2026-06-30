@@ -75,8 +75,7 @@ If the seeded PBX already exists, the backend updates its URL, client ID, secret
 - System status: version, active calls, trunks, extensions, backup timestamp, license/subscription.
 - SIP trunks via `/xapi/v1/Trunks`.
 - Last 5 event log entries via `/xapi/v1/EventLogs`.
-- Backup settings and encryption.
-- Console restriction, logging, E.164, CRM, Microsoft Teams, emergency rules, SBC status.
+- CRM integration and SBC status.
 
 Detailed OS service status is not exposed reliably through the remote XAPI. The dashboard shows the XAPI aggregate `HasNotRunningServices`. For per-service status, add a local agent or SSH check later.
 
