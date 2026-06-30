@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     poll_interval_seconds: int = 30
     request_timeout_seconds: float = 12.0
     cors_origins: str = "http://localhost:5173,http://localhost:8088"
+    seed_installation_enabled: bool = False
+    seed_installation_customer_name: str = ""
+    seed_installation_base_url: str = ""
+    seed_installation_client_id: str = ""
+    seed_installation_client_secret: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -21,4 +26,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

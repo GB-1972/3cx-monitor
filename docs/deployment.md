@@ -15,7 +15,19 @@ If this port is already in use on the target server, change it in `deploy/docker
 
 Preferred deployment uses prebuilt GitHub Container Registry images. You can use the compose file directly without cloning the repository.
 
-### Without Clone
+### Portainer Web Editor
+
+Open Portainer, create a new Stack, paste `deploy/docker-compose.yml`, change the passwords and deploy. The compose file contains plain values instead of `${...}` variables, so it is suitable for copy/paste into the Portainer web editor.
+
+For a first-run setup, set:
+
+- `SEED_INSTALLATION_ENABLED: "true"`
+- `SEED_INSTALLATION_CUSTOMER_NAME: ADICOM`
+- `SEED_INSTALLATION_BASE_URL: https://adicom.on3cx.de`
+- `SEED_INSTALLATION_CLIENT_ID: monitoring`
+- `SEED_INSTALLATION_CLIENT_SECRET: <real API secret>`
+
+### Without Portainer
 
 Download only the stack file:
 
@@ -24,18 +36,6 @@ curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-moni
 nano .env
 docker compose up -d
 ```
-
-Minimal `.env`:
-
-```env
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-this-password
-APP_SECRET_KEY=change-this-to-a-long-random-secret
-POSTGRES_PASSWORD=change-this-db-password
-CORS_ORIGINS=http://SERVER-IP:8088
-```
-
-In Portainer, paste `deploy/docker-compose.yml` into a new Stack and either define those variables in the Stack environment or edit the placeholders directly in the YAML.
 
 ### With Clone
 
@@ -70,7 +70,7 @@ http://SERVER-IP:8088
 
 ## Add the First 3CX System
 
-Use the web UI after login:
+If seed variables are not enabled, use the web UI after login:
 
 - Customer name: `ADICOM`
 - URL: `https://adicom.on3cx.de`

@@ -29,10 +29,53 @@ async def poller(settings: Settings) -> None:
         await asyncio.sleep(max(settings.poll_interval_seconds, 10))
 
 
+def seed_initial_installation(settings: Settings) -> None:
+    if not settings.seed_installation_enabled:
+        return
+
+    required = [
+        settings.seed_installation_customer_name,
+        settings.seed_installation_base_url,
+        settings.seed_installation_client_id,
+        settings.seed_installation_client_secret,
+    ]
+    if not all(value.strip() for value in required):
+        return
+
+    base_url = settings.seed_installation_base_url.rstrip("/")
+    db = SessionLocal()
+    try:
+        installation = db.scalar(
+            select(Installation).where(
+                (Installation.customer_name == settings.seed_installation_customer_name)
+                | (Installation.base_url == base_url)
+            )
+        )
+        if installation is None:
+            installation = Installation(
+                customer_name=settings.seed_installation_customer_name,
+                base_url=base_url,
+                client_id=settings.seed_installation_client_id,
+                client_secret_encrypted=encrypt_secret(settings.seed_installation_client_secret, settings),
+                enabled=True,
+            )
+            db.add(installation)
+        else:
+            installation.customer_name = settings.seed_installation_customer_name
+            installation.base_url = base_url
+            installation.client_id = settings.seed_installation_client_id
+            installation.client_secret_encrypted = encrypt_secret(settings.seed_installation_client_secret, settings)
+            installation.enabled = True
+        db.commit()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     settings = get_settings()
+    seed_initial_installation(settings)
     task = asyncio.create_task(poller(settings))
     yield
     task.cancel()
@@ -168,4 +211,3 @@ async def refresh_installation(
         raise HTTPException(status_code=404, detail="Installation not found")
     snapshot = await collect_installation(db, installation, settings)
     return snapshot_payload(installation, snapshot)
-

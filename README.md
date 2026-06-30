@@ -6,24 +6,14 @@ Web dashboard for monitoring multiple 3CX v20 systems through the 3CX XAPI.
 
 ### Server Deployment With Images
 
-You do not need to clone the repository if your Docker host or Portainer only needs a stack file. Use `deploy/docker-compose.yml` as the ready-to-run stack file and set the variables in Portainer or in a local `.env`.
+You do not need to clone the repository if your Docker host or Portainer only needs a stack file. Use `deploy/docker-compose.yml` as the ready-to-run stack file.
 
-For Portainer: create a new Stack, paste the content of `deploy/docker-compose.yml`, change the placeholder values, and deploy.
+For Portainer: create a new Stack, paste the content of `deploy/docker-compose.yml`, change the placeholder values, and deploy. The file does not use `${...}` variables, so Portainer can run it directly from the web editor.
 
 ```bash
 curl -L -o docker-compose.yml https://raw.githubusercontent.com/GB-1972/3cx-monitor/main/deploy/docker-compose.yml
 nano .env
 docker compose up -d
-```
-
-Required `.env` values:
-
-```env
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-this-password
-APP_SECRET_KEY=change-this-to-a-long-random-secret
-POSTGRES_PASSWORD=change-this-db-password
-CORS_ORIGINS=http://SERVER-IP:8088
 ```
 
 If you prefer working from the repo:
@@ -63,6 +53,20 @@ The frontend listens on `8088` and proxies `/api` to the backend internally. Put
 - The monitoring server must be allowed by firewall and 3CX console restrictions.
 
 3CX URLs can use port 443, for example `https://adicom.on3cx.de`.
+
+## Optional First-Run Seed
+
+The backend can create the first PBX automatically on startup when these environment values are set:
+
+```env
+SEED_INSTALLATION_ENABLED=true
+SEED_INSTALLATION_CUSTOMER_NAME=ADICOM
+SEED_INSTALLATION_BASE_URL=https://adicom.on3cx.de
+SEED_INSTALLATION_CLIENT_ID=monitoring
+SEED_INSTALLATION_CLIENT_SECRET=real-secret
+```
+
+If the seeded PBX already exists, the backend updates its URL, client ID, secret, and enabled flag.
 
 ## Monitored Data
 
