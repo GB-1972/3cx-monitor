@@ -57,8 +57,15 @@ const statusLabel = {
   unknown: "Unbekannt"
 };
 
+const selectedInstallationKey = "selectedInstallationId";
+
 function token() {
   return localStorage.getItem("token") || "";
+}
+
+function savedSelectedInstallationId(): number | null {
+  const value = Number(localStorage.getItem(selectedInstallationKey));
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -329,7 +336,7 @@ function App() {
   const [loggedIn, setLoggedIn] = useState(Boolean(token()));
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(() => savedSelectedInstallationId());
   const [showAdmin, setShowAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -338,6 +345,15 @@ function App() {
     () => snapshots.find((item) => item.installation_id === selectedId) || snapshots[0] || null,
     [snapshots, selectedId]
   );
+
+  function selectInstallation(id: number | null) {
+    if (id) {
+      localStorage.setItem(selectedInstallationKey, String(id));
+    } else {
+      localStorage.removeItem(selectedInstallationKey);
+    }
+    setSelectedId(id);
+  }
 
   async function load() {
     if (!loggedIn) return;
@@ -350,8 +366,17 @@ function App() {
       setInstallations(items);
       setSnapshots(dashboard);
       setSelectedId((current) => {
-        if (current && dashboard.some((item) => item.installation_id === current)) return current;
-        return dashboard[0]?.installation_id ?? null;
+        const saved = savedSelectedInstallationId();
+        const next =
+          [current, saved].find((id) => id && dashboard.some((item) => item.installation_id === id)) ??
+          dashboard[0]?.installation_id ??
+          null;
+        if (next) {
+          localStorage.setItem(selectedInstallationKey, String(next));
+        } else {
+          localStorage.removeItem(selectedInstallationKey);
+        }
+        return next;
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Daten konnten nicht geladen werden");
@@ -379,6 +404,10 @@ function App() {
   async function remove(id: number) {
     if (!confirm("Anlage wirklich löschen?")) return;
     await api(`/api/installations/${id}`, { method: "DELETE" });
+    setSelectedId((current) => {
+      if (current === id) localStorage.removeItem(selectedInstallationKey);
+      return current === id ? null : current;
+    });
     await load();
   }
 
@@ -400,7 +429,7 @@ function App() {
             <button
               className={`navItem ${selected?.installation_id === snapshot.installation_id ? "active" : ""}`}
               key={snapshot.installation_id}
-              onClick={() => setSelectedId(snapshot.installation_id)}
+              onClick={() => selectInstallation(snapshot.installation_id)}
             >
               <div>
                 <strong>{snapshot.customer_name}</strong>
