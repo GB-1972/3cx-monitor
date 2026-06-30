@@ -244,12 +244,27 @@ function CheckMark({ check }: { check?: HealthCheck }) {
 }
 
 function Dashboard({ snapshots, onSelect }: { snapshots: Snapshot[]; onSelect: (id: number) => void }) {
+  const totals = snapshots.reduce(
+    (acc, snapshot) => {
+      acc.total += 1;
+      acc[snapshot.status] += 1;
+      return acc;
+    },
+    { total: 0, ok: 0, warning: 0, critical: 0, unknown: 0 }
+  );
   const checkNames = Array.from(
     new Set(snapshots.flatMap((snapshot) => (snapshot.data.checks || []).map((check) => check.name)))
   );
 
   return (
     <section className="dashboard">
+      <div className="overviewMetrics">
+        <SummaryCard icon={<Server size={18} />} label="Anlagen" value={totals.total} />
+        <SummaryCard icon={<CheckCircle2 size={18} />} label="OK" value={totals.ok} />
+        <SummaryCard icon={<AlertTriangle size={18} />} label="Warnungen" value={totals.warning} />
+        <SummaryCard icon={<XCircle size={18} />} label="Kritisch" value={totals.critical} />
+      </div>
+
       {snapshots.length === 0 && (
         <section className="empty">
           <Server size={34} />

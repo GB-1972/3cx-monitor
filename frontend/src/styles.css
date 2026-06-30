@@ -223,6 +223,13 @@ a {
   margin: 16px 0;
 }
 
+.overviewMetrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
 .metric {
   align-items: center;
   background: #f8fafc;
@@ -554,6 +561,7 @@ input {
   }
 
   .metrics,
+  .overviewMetrics,
   .contentGrid,
   .formGrid {
     grid-template-columns: 1fr;
