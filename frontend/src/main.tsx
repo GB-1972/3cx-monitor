@@ -59,6 +59,15 @@ const statusLabel = {
   unknown: "Unbekannt"
 };
 
+const healthCheckLabels: Record<string, string> = {
+  "SIP trunks": "Trunks",
+  "3CX services": "Dienste",
+  "CRM integration": "CRM",
+  "CRM Integrationen": "CRM",
+  "3CX Services": "Dienste",
+  "SIP-Trunks": "Trunks"
+};
+
 function token() {
   return localStorage.getItem("token") || "";
 }
@@ -93,6 +102,10 @@ function fmtDate(value: unknown): string {
     dateStyle: "short",
     timeStyle: "medium"
   }).format(date);
+}
+
+function healthCheckLabel(name: string): string {
+  return healthCheckLabels[name] || name;
 }
 
 function StatusIcon({ status }: { status: Snapshot["status"] | HealthCheck["status"] }) {
@@ -236,7 +249,7 @@ function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: str
 
 function CheckMark({ check }: { check?: HealthCheck }) {
   const status = check?.status || "unknown";
-  const title = check ? `${check.name}: ${check.message}` : "Check nicht vorhanden";
+  const title = check ? `${healthCheckLabel(check.name)}: ${check.message}` : "Check nicht vorhanden";
   return (
     <span className={`checkMark ${status}`} title={title}>
       <StatusIcon status={status} />
@@ -262,7 +275,7 @@ function Dashboard({
     { total: 0, ok: 0, warning: 0, critical: 0, unknown: 0 }
   );
   const checkNames = Array.from(
-    new Set(snapshots.flatMap((snapshot) => (snapshot.data.checks || []).map((check) => check.name)))
+    new Set(snapshots.flatMap((snapshot) => (snapshot.data.checks || []).map((check) => healthCheckLabel(check.name))))
   );
 
   return (
@@ -311,7 +324,7 @@ function Dashboard({
                     </td>
                     {checkNames.map((name) => (
                       <td className="checkCell" key={name}>
-                        <CheckMark check={checks.find((check) => check.name === name)} />
+                        <CheckMark check={checks.find((check) => healthCheckLabel(check.name) === name)} />
                       </td>
                     ))}
                     <td>
@@ -404,7 +417,7 @@ function Detail({
               <div className="checkItem" key={check.name}>
                 <Pill status={check.status} />
                 <div>
-                  <strong>{check.name}</strong>
+                  <strong>{healthCheckLabel(check.name)}</strong>
                   <span>{check.message}</span>
                 </div>
               </div>

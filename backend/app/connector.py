@@ -101,20 +101,20 @@ class ThreeCxConnector:
         trunks_online = sum(1 for trunk in trunks if trunk.get("IsOnline") is True)
         if trunks:
             checks.append(self._health(
-                "SIP trunks",
+                "Trunks",
                 "ok" if trunks_online == len(trunks) else "critical",
                 f"{trunks_online}/{len(trunks)} SIP trunks online",
                 {"trunks": trunks},
             ))
         elif trunks_total is not None and trunks_registered is not None:
             checks.append(self._health(
-                "SIP trunks",
+                "Trunks",
                 "ok" if trunks_registered == trunks_total else "critical",
                 f"{trunks_registered}/{trunks_total} SIP trunks registered",
             ))
 
         checks.append(self._health(
-            "3CX services",
+            "Dienste",
             "critical" if system.get("HasNotRunningServices") else "ok",
             "One or more 3CX services are not running" if system.get("HasNotRunningServices") else "No stopped services reported by XAPI",
         ))
@@ -122,7 +122,7 @@ class ThreeCxConnector:
         if crm:
             name = crm.get("Name")
             checks.append(self._health(
-                "CRM integration",
+                "CRM",
                 "warning" if name and name != "CRM.NoneCrmSelected" else "ok",
                 f"CRM integration active: {name}" if name and name != "CRM.NoneCrmSelected" else "No CRM integration active",
             ))
