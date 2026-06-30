@@ -4,6 +4,25 @@ Web dashboard for monitoring multiple 3CX v20 systems through the 3CX XAPI.
 
 ## Quick Start
 
+### Server Deployment With Images
+
+```bash
+git clone git@github.com:GB-1972/3cx-monitor.git
+cd 3cx-monitor
+cp .env.example .env
+nano .env
+docker compose -f docker-compose.images.yml pull
+docker compose -f docker-compose.images.yml up -d
+```
+
+If the GHCR packages are private, log in on the Docker server first:
+
+```bash
+echo "GITHUB_TOKEN_WITH_READ_PACKAGES" | docker login ghcr.io -u GB-1972 --password-stdin
+```
+
+### Local Build
+
 ```bash
 cp .env.example .env
 nano .env
@@ -39,4 +58,3 @@ Detailed OS service status is not exposed reliably through the remote XAPI. The 
 - Do not put real API secrets into `.env.example`.
 - Installation secrets are encrypted in the database using `APP_SECRET_KEY`.
 - Keep `.env` out of backups and downloads unless you intentionally include it.
-

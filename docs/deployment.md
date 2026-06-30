@@ -10,15 +10,30 @@ The compose file exposes:
 - Backend API: `8089`
 - Postgres: internal only
 
-If these ports are already in use on the target server, change them in `docker-compose.yml`.
+If these ports are already in use on the target server, change them in `docker-compose.images.yml`.
 
 ## First Deployment
 
+Preferred deployment uses prebuilt GitHub Container Registry images:
+
 ```bash
-tar xzf 3cx-monitor.tar.gz
+git clone git@github.com:GB-1972/3cx-monitor.git
 cd 3cx-monitor
 cp .env.example .env
 nano .env
+docker compose -f docker-compose.images.yml pull
+docker compose -f docker-compose.images.yml up -d
+```
+
+If the GHCR packages are private, authenticate Docker first with a GitHub token that has `read:packages`:
+
+```bash
+echo "GITHUB_TOKEN_WITH_READ_PACKAGES" | docker login ghcr.io -u GB-1972 --password-stdin
+```
+
+For local development or when no registry access is available, build directly on the server:
+
+```bash
 docker compose up -d --build
 ```
 
@@ -57,4 +72,3 @@ Back up these items:
 - Docker volume `3cx-monitor_postgres_data`
 
 Do not publish `.env`; it contains the application secret and database password.
-
