@@ -223,6 +223,13 @@ a {
   margin: 16px 0;
 }
 
+.overviewMetrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
 .metric {
   align-items: center;
   background: #f8fafc;
@@ -262,6 +269,99 @@ a {
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.dashboard {
+  min-width: 0;
+}
+
+.customerGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.customerCard {
+  background: #ffffff;
+  border: 1px solid #dce2ea;
+  border-radius: 8px;
+  color: #162033;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 220px;
+  padding: 16px;
+  text-align: left;
+}
+
+.customerCard:hover {
+  border-color: #9dbcf4;
+}
+
+.customerCardHeader {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.customerCardHeader strong {
+  display: block;
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+
+.customerCardHeader span {
+  color: #667085;
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.customerFacts {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.customerFacts span {
+  background: #f8fafc;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 34px;
+  padding: 8px;
+}
+
+.miniChecks {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.miniCheck {
+  align-items: flex-start;
+  background: #fbfcfe;
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px 8px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  min-height: 42px;
+  padding: 9px 10px;
+}
+
+.miniCheck span {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.miniCheck small {
+  color: #667085;
+  font-size: 12px;
+  grid-column: 2;
 }
 
 .panel {
@@ -462,8 +562,14 @@ input {
   }
 
   .metrics,
+  .overviewMetrics,
   .contentGrid,
   .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .customerGrid,
+  .customerFacts {
     grid-template-columns: 1fr;
   }
 
@@ -482,4 +588,3 @@ input {
     flex-direction: column;
   }
 }
-

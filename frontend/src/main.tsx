@@ -10,6 +10,7 @@ import {
   LogOut,
   PhoneCall,
   Plus,
+  MonitorCheck,
   RefreshCw,
   Save,
   Server,
@@ -57,15 +58,8 @@ const statusLabel = {
   unknown: "Unbekannt"
 };
 
-const selectedInstallationKey = "selectedInstallationId";
-
 function token() {
   return localStorage.getItem("token") || "";
-}
-
-function savedSelectedInstallationId(): number | null {
-  const value = Number(localStorage.getItem(selectedInstallationKey));
-  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -239,6 +233,68 @@ function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: str
   );
 }
 
+function Dashboard({ snapshots, onSelect }: { snapshots: Snapshot[]; onSelect: (id: number) => void }) {
+  const totals = snapshots.reduce(
+    (acc, snapshot) => {
+      acc.total += 1;
+      acc[snapshot.status] += 1;
+      return acc;
+    },
+    { total: 0, ok: 0, warning: 0, critical: 0, unknown: 0 }
+  );
+
+  return (
+    <section className="dashboard">
+      <div className="overviewMetrics">
+        <SummaryCard icon={<Server size={18} />} label="Anlagen" value={totals.total} />
+        <SummaryCard icon={<CheckCircle2 size={18} />} label="OK" value={totals.ok} />
+        <SummaryCard icon={<AlertTriangle size={18} />} label="Warnungen" value={totals.warning} />
+        <SummaryCard icon={<XCircle size={18} />} label="Kritisch" value={totals.critical} />
+      </div>
+
+      <div className="customerGrid">
+        {snapshots.length === 0 && (
+          <section className="empty">
+            <Server size={34} />
+            <p>Noch keine Anlagen.</p>
+          </section>
+        )}
+        {snapshots.map((snapshot) => {
+          const summary = snapshot.data.summary || {};
+          const checks = snapshot.data.checks || [];
+          return (
+            <button className="customerCard" key={snapshot.installation_id} onClick={() => onSelect(snapshot.installation_id)}>
+              <div className="customerCardHeader">
+                <div>
+                  <strong>{snapshot.customer_name}</strong>
+                  <span>{snapshot.base_url}</span>
+                </div>
+                <Pill status={snapshot.status} />
+              </div>
+              <div className="customerFacts">
+                <span>Calls: {fmt(summary.active_calls)}</span>
+                <span>Trunks: {fmt(summary.trunks_registered)}/{fmt(summary.trunks_total)}</span>
+                <span>Backup: {fmtDate(summary.last_backup)}</span>
+              </div>
+              <div className="miniChecks">
+                {checks.length === 0 && <span className="muted">Noch keine Checks vorhanden.</span>}
+                {checks.map((check) => (
+                  <div className="miniCheck" key={check.name}>
+                    <StatusIcon status={check.status} />
+                    <span>{check.name}</span>
+                    <small>{check.message}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="footerNote">Zuletzt geprüft: {fmtDate(snapshot.checked_at)}</div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function Detail({ snapshot, onRefresh }: { snapshot: Snapshot | null; onRefresh: (id: number) => void }) {
   if (!snapshot) {
     return (
@@ -336,22 +392,17 @@ function App() {
   const [loggedIn, setLoggedIn] = useState(Boolean(token()));
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(() => savedSelectedInstallationId());
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const selected = useMemo(
-    () => snapshots.find((item) => item.installation_id === selectedId) || snapshots[0] || null,
+    () => snapshots.find((item) => item.installation_id === selectedId) || null,
     [snapshots, selectedId]
   );
 
   function selectInstallation(id: number | null) {
-    if (id) {
-      localStorage.setItem(selectedInstallationKey, String(id));
-    } else {
-      localStorage.removeItem(selectedInstallationKey);
-    }
     setSelectedId(id);
   }
 
@@ -366,17 +417,7 @@ function App() {
       setInstallations(items);
       setSnapshots(dashboard);
       setSelectedId((current) => {
-        const saved = savedSelectedInstallationId();
-        const next =
-          [current, saved].find((id) => id && dashboard.some((item) => item.installation_id === id)) ??
-          dashboard[0]?.installation_id ??
-          null;
-        if (next) {
-          localStorage.setItem(selectedInstallationKey, String(next));
-        } else {
-          localStorage.removeItem(selectedInstallationKey);
-        }
-        return next;
+        return current && dashboard.some((item) => item.installation_id === current) ? current : null;
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Daten konnten nicht geladen werden");
@@ -405,7 +446,6 @@ function App() {
     if (!confirm("Anlage wirklich löschen?")) return;
     await api(`/api/installations/${id}`, { method: "DELETE" });
     setSelectedId((current) => {
-      if (current === id) localStorage.removeItem(selectedInstallationKey);
       return current === id ? null : current;
     });
     await load();
@@ -425,9 +465,16 @@ function App() {
           Anlage hinzufügen
         </button>
         <div className="navList">
+          <button className={`navItem ${selectedId === null ? "active" : ""}`} onClick={() => selectInstallation(null)}>
+            <div>
+              <strong>Übersicht</strong>
+              <span>Alle Kunden und Health-Checks</span>
+            </div>
+            <MonitorCheck size={18} />
+          </button>
           {snapshots.map((snapshot) => (
             <button
-              className={`navItem ${selected?.installation_id === snapshot.installation_id ? "active" : ""}`}
+              className={`navItem ${selectedId === snapshot.installation_id ? "active" : ""}`}
               key={snapshot.installation_id}
               onClick={() => selectInstallation(snapshot.installation_id)}
             >
@@ -493,7 +540,7 @@ function App() {
           </section>
         )}
 
-        <Detail snapshot={selected} onRefresh={refresh} />
+        {selected ? <Detail snapshot={selected} onRefresh={refresh} /> : <Dashboard snapshots={snapshots} onSelect={selectInstallation} />}
       </section>
     </main>
   );
