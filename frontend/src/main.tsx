@@ -359,10 +359,18 @@ function Dashboard({
       {snapshots.length > 0 && (
         <div className="healthTableWrap">
           <table className="healthTable">
+            <colgroup>
+              <col className="statusColumn" />
+              <col className="customerColumn" />
+              {overviewCheckNames.map((name) => (
+                <col className="checkColumn" key={name} />
+              ))}
+              <col className="actionColumn" />
+            </colgroup>
             <thead>
               <tr>
-                <th>Status</th>
-                <th>Kunde</th>
+                <th className="statusCell">Status</th>
+                <th className="customerCell">Kunde</th>
                 {overviewCheckNames.map((name) => (
                   <th key={name}>{name}</th>
                 ))}
@@ -385,7 +393,7 @@ function Dashboard({
                     <td className="statusCell">
                       <Pill status={snapshot.status} />
                     </td>
-                    <td>
+                    <td className="customerCell">
                       <strong>{snapshot.customer_name}</strong>
                     </td>
                     {overviewCheckNames.map((name) => {

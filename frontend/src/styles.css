@@ -314,7 +314,24 @@ a {
 .healthTable {
   border-collapse: collapse;
   min-width: 760px;
+  table-layout: fixed;
   width: 100%;
+}
+
+.statusColumn {
+  width: 112px;
+}
+
+.customerColumn {
+  width: 230px;
+}
+
+.checkColumn {
+  width: 76px;
+}
+
+.actionColumn {
+  width: auto;
 }
 
 .healthTable th,
@@ -368,7 +385,10 @@ a {
 
 .checkCell {
   text-align: center;
-  width: 76px;
+}
+
+.customerCell {
+  width: 230px;
 }
 
 .checkButton {
@@ -393,7 +413,6 @@ a {
 
 .healthTable .actionCell {
   text-align: right;
-  width: 72px;
 }
 
 .checkMark {
