@@ -231,7 +231,7 @@ class ThreeCxConnector:
             token = await self._token(client)
             raw = {
                 "system_status": await self._get(client, token, "/xapi/v1/SystemStatus"),
-                "trunks": await self._get(client, token, "/xapi/v1/Trunks", {"$top": 100, "$expand": "Gateway"}),
+                "trunks": await self._get(client, token, "/xapi/v1/Trunks", {"$top": 100}),
                 "active_calls": await self._get(client, token, "/xapi/v1/ActiveCalls", {"$top": 100, "$orderby": "EstablishedAt asc"}),
                 "event_logs": await self._get(client, token, "/xapi/v1/EventLogs", {"$top": 5, "$orderby": "TimeGenerated desc"}),
                 "sbcs": await self._get(client, token, "/xapi/v1/Sbcs", {"$top": 100}),
