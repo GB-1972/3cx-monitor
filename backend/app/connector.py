@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -87,12 +87,84 @@ class ThreeCxConnector:
     def _health(name: str, status: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
         return {"name": name, "status": status, "message": message, "details": details or {}}
 
+    @staticmethod
+    def _parse_datetime(value: Any) -> datetime | None:
+        if not value or not isinstance(value, str):
+            return None
+        normalized = value.strip()
+        if normalized.endswith("Z"):
+            normalized = f"{normalized[:-1]}+00:00"
+        if "." in normalized:
+            head, tail = normalized.split(".", 1)
+            fraction = []
+            rest = []
+            for char in tail:
+                if char.isdigit() and not rest:
+                    fraction.append(char)
+                else:
+                    rest.append(char)
+            normalized = f"{head}.{''.join(fraction[:6])}{''.join(rest)}"
+        try:
+            parsed = datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    def _license_check(self, system: dict[str, Any]) -> dict[str, Any]:
+        expires_raw = system.get("ExpirationDate")
+        expires_at = self._parse_datetime(expires_raw)
+        license_active = system.get("LicenseActive", system.get("Activated"))
+
+        if license_active is False:
+            return self._health(
+                "Lizenz",
+                "critical",
+                "Lizenz ist nicht aktiv",
+                {"license_active": license_active, "license_expires": expires_raw},
+            )
+
+        if expires_at is None:
+            return self._health(
+                "Lizenz",
+                "unknown",
+                "Lizenzlaufzeit wurde nicht geliefert",
+                {"license_active": license_active, "license_expires": expires_raw},
+            )
+
+        now = datetime.now(timezone.utc)
+        days_remaining = (expires_at.date() - now.date()).days
+        if expires_at <= now + timedelta(days=7):
+            status = "critical"
+        elif expires_at <= now + timedelta(days=14):
+            status = "warning"
+        else:
+            status = "ok"
+
+        if days_remaining < 0:
+            message = f"Lizenz seit {abs(days_remaining)} Tag(en) abgelaufen"
+        elif days_remaining == 0:
+            message = "Lizenz läuft heute ab"
+        else:
+            message = f"Lizenz läuft in {days_remaining} Tag(en) ab"
+
+        return self._health(
+            "Lizenz",
+            status,
+            message,
+            {
+                "days_remaining": days_remaining,
+                "license_active": license_active,
+                "license_expires": expires_raw,
+            },
+        )
+
     def _evaluate(self, raw: dict[str, Any]) -> dict[str, Any]:
         system = raw.get("system_status") or {}
         trunks = self._values(raw.get("trunks"))
         events = self._values(raw.get("event_logs"))
         sbcs = self._values(raw.get("sbcs"))
-        crm = raw.get("crm_integration") or {}
 
         checks: list[dict[str, Any]] = []
 
@@ -119,13 +191,7 @@ class ThreeCxConnector:
             "One or more 3CX services are not running" if system.get("HasNotRunningServices") else "No stopped services reported by XAPI",
         ))
 
-        if crm:
-            name = crm.get("Name")
-            checks.append(self._health(
-                "CRM",
-                "warning" if name and name != "CRM.NoneCrmSelected" else "ok",
-                f"CRM integration active: {name}" if name and name != "CRM.NoneCrmSelected" else "No CRM integration active",
-            ))
+        checks.append(self._license_check(system))
 
         if sbcs:
             connected = sum(1 for sbc in sbcs if sbc.get("HasConnection") is True)
@@ -168,7 +234,6 @@ class ThreeCxConnector:
                 "trunks": await self._get(client, token, "/xapi/v1/Trunks", {"$top": 100}),
                 "active_calls": await self._get(client, token, "/xapi/v1/ActiveCalls", {"$top": 100, "$orderby": "EstablishedAt asc"}),
                 "event_logs": await self._get(client, token, "/xapi/v1/EventLogs", {"$top": 5, "$orderby": "TimeGenerated desc"}),
-                "crm_integration": await self._get(client, token, "/xapi/v1/CrmIntegration"),
                 "sbcs": await self._get(client, token, "/xapi/v1/Sbcs", {"$top": 100}),
             }
         evaluated = self._evaluate(raw)

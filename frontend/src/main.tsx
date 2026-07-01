@@ -65,7 +65,17 @@ const healthCheckLabels: Record<string, string> = {
   "CRM integration": "CRM",
   "CRM Integrationen": "CRM",
   "3CX Services": "Dienste",
-  "SIP-Trunks": "Trunks"
+  "SIP-Trunks": "Trunks",
+  "License": "Lizenz",
+  "Lizenzlaufzeit": "Lizenz"
+};
+
+const overviewCheckNames = ["Trunks", "Dienste", "SBCs", "Lizenz"];
+const statusSortOrder: Record<Snapshot["status"], number> = {
+  critical: 0,
+  warning: 1,
+  unknown: 2,
+  ok: 3
 };
 
 function token() {
@@ -106,6 +116,18 @@ function fmtDate(value: unknown): string {
 
 function healthCheckLabel(name: string): string {
   return healthCheckLabels[name] || name;
+}
+
+function visibleChecks(snapshot: Snapshot): HealthCheck[] {
+  return (snapshot.data.checks || []).filter((check) => healthCheckLabel(check.name) !== "CRM");
+}
+
+function sortedSnapshots(snapshots: Snapshot[]): Snapshot[] {
+  return [...snapshots].sort((a, b) => {
+    const byStatus = statusSortOrder[a.status] - statusSortOrder[b.status];
+    if (byStatus !== 0) return byStatus;
+    return a.customer_name.localeCompare(b.customer_name, "de");
+  });
 }
 
 function StatusIcon({ status }: { status: Snapshot["status"] | HealthCheck["status"] }) {
@@ -274,9 +296,7 @@ function Dashboard({
     },
     { total: 0, ok: 0, warning: 0, critical: 0, unknown: 0 }
   );
-  const checkNames = Array.from(
-    new Set(snapshots.flatMap((snapshot) => (snapshot.data.checks || []).map((check) => healthCheckLabel(check.name))))
-  );
+  const orderedSnapshots = useMemo(() => sortedSnapshots(snapshots), [snapshots]);
 
   return (
     <section className="dashboard">
@@ -298,17 +318,17 @@ function Dashboard({
           <table className="healthTable">
             <thead>
               <tr>
+                <th>Status</th>
                 <th>Kunde</th>
-                {checkNames.map((name) => (
+                {overviewCheckNames.map((name) => (
                   <th key={name}>{name}</th>
                 ))}
-                <th>Status</th>
                 <th>Aktion</th>
               </tr>
             </thead>
             <tbody>
-              {snapshots.map((snapshot) => {
-                const checks = snapshot.data.checks || [];
+              {orderedSnapshots.map((snapshot) => {
+                const checks = visibleChecks(snapshot);
                 return (
                   <tr
                     className={`healthRow ${snapshot.status}`}
@@ -319,17 +339,17 @@ function Dashboard({
                       if (event.key === "Enter" || event.key === " ") onSelect(snapshot.installation_id);
                     }}
                   >
+                    <td className="statusCell">
+                      <Pill status={snapshot.status} />
+                    </td>
                     <td>
                       <strong>{snapshot.customer_name}</strong>
                     </td>
-                    {checkNames.map((name) => (
+                    {overviewCheckNames.map((name) => (
                       <td className="checkCell" key={name}>
                         <CheckMark check={checks.find((check) => healthCheckLabel(check.name) === name)} />
                       </td>
                     ))}
-                    <td>
-                      <Pill status={snapshot.status} />
-                    </td>
                     <td>
                       <button
                         className="dangerText"
@@ -373,7 +393,7 @@ function Detail({
   }
 
   const summary = snapshot.data.summary || {};
-  const checks = snapshot.data.checks || [];
+  const checks = visibleChecks(snapshot);
   const trunks = snapshot.data.trunks || [];
   const events = snapshot.data.events || [];
 
@@ -468,6 +488,7 @@ function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const orderedSnapshots = useMemo(() => sortedSnapshots(snapshots), [snapshots]);
 
   const selected = useMemo(
     () => snapshots.find((item) => item.installation_id === selectedId) || null,
@@ -561,7 +582,7 @@ function App() {
             </div>
             <MonitorCheck size={18} />
           </button>
-          {snapshots.map((snapshot) => (
+          {orderedSnapshots.map((snapshot) => (
             <button
               className={`navItem ${selectedId === snapshot.installation_id ? "active" : ""}`}
               key={snapshot.installation_id}

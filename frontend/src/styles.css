@@ -302,14 +302,14 @@ a {
 
 .healthTable {
   border-collapse: collapse;
-  min-width: 720px;
+  min-width: 760px;
   width: 100%;
 }
 
 .healthTable th,
 .healthTable td {
   border-bottom: 1px solid #e8edf3;
-  padding: 12px 14px;
+  padding: 7px 10px;
   text-align: left;
   vertical-align: middle;
 }
@@ -319,6 +319,7 @@ a {
   color: #475467;
   font-size: 12px;
   font-weight: 800;
+  height: 34px;
   text-transform: uppercase;
 }
 
@@ -328,6 +329,12 @@ a {
 
 .healthRow {
   cursor: pointer;
+  height: 40px;
+}
+
+.healthRow strong {
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .healthRow:hover,
@@ -350,15 +357,25 @@ a {
 
 .checkCell {
   text-align: center;
+  width: 76px;
+}
+
+.statusCell {
+  width: 112px;
 }
 
 .checkMark {
   align-items: center;
   border-radius: 999px;
   display: inline-flex;
-  height: 28px;
+  height: 24px;
   justify-content: center;
-  width: 28px;
+  width: 24px;
+}
+
+.checkMark svg {
+  height: 16px;
+  width: 16px;
 }
 
 .checkMark.ok {
@@ -455,8 +472,23 @@ a {
   font-size: 12px;
   font-weight: 800;
   gap: 5px;
-  min-height: 26px;
-  padding: 0 9px;
+  min-height: 24px;
+  padding: 0 8px;
+}
+
+.pill svg {
+  height: 16px;
+  width: 16px;
+}
+
+.healthTable .dangerText {
+  min-height: 30px;
+  width: 30px;
+}
+
+.healthTable .dangerText svg {
+  height: 15px;
+  width: 15px;
 }
 
 .pill.ok {
