@@ -666,6 +666,12 @@ a {
   margin-bottom: 14px;
 }
 
+.editGrid {
+  border-top: 1px solid #edf0f5;
+  margin: 0;
+  padding: 12px;
+}
+
 label {
   color: #344054;
   display: flex;
@@ -680,6 +686,22 @@ input {
   border-radius: 8px;
   min-height: 40px;
   padding: 8px 10px;
+}
+
+input[type="checkbox"] {
+  min-height: auto;
+}
+
+.checkboxLabel {
+  align-items: center;
+  flex-direction: row;
+  grid-column: 1 / -1;
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .wide {
@@ -697,6 +719,25 @@ input {
 
 .footerNote {
   margin-top: 14px;
+}
+
+.adminEntry {
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.adminEntry .adminRow {
+  border: 0;
+  border-radius: 0;
+}
+
+.adminActions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .empty {

@@ -9,6 +9,7 @@ import {
   Loader2,
   LogOut,
   PhoneCall,
+  Pencil,
   Plus,
   MonitorCheck,
   Power,
@@ -281,6 +282,86 @@ function InstallationForm({ onSaved }: { onSaved: () => void }) {
         {busy ? <Loader2 className="spin" size={16} /> : <Save size={16} />}
         Anlage speichern
       </button>
+    </form>
+  );
+}
+
+function InstallationEditor({
+  installation,
+  onSaved,
+  onCancel
+}: {
+  installation: Installation;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [customerName, setCustomerName] = useState(installation.customer_name);
+  const [baseUrl, setBaseUrl] = useState(installation.base_url);
+  const [clientId, setClientId] = useState(installation.client_id);
+  const [clientSecret, setClientSecret] = useState("");
+  const [enabled, setEnabled] = useState(installation.enabled);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const payload: Record<string, unknown> = {
+      customer_name: customerName,
+      base_url: baseUrl,
+      client_id: clientId,
+      enabled
+    };
+    if (clientSecret.trim()) {
+      payload.client_secret = clientSecret;
+    }
+    try {
+      await api<Installation>(`/api/installations/${installation.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="formGrid editGrid" onSubmit={submit}>
+      <label>
+        Kunde
+        <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} />
+      </label>
+      <label>
+        Anlagen-URL
+        <input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
+      </label>
+      <label>
+        API Client
+        <input value={clientId} onChange={(event) => setClientId(event.target.value)} />
+      </label>
+      <label>
+        Neues API Secret
+        <input type="password" value={clientSecret} onChange={(event) => setClientSecret(event.target.value)} placeholder="Leer lassen zum Beibehalten" />
+      </label>
+      <label className="checkboxLabel">
+        <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+        Aktiv
+      </label>
+      {error && <div className="error wide">{error}</div>}
+      <div className="formActions wide">
+        <button className="iconText" type="button" onClick={onCancel}>
+          <X size={16} />
+          Abbrechen
+        </button>
+        <button className="primary" disabled={busy}>
+          {busy ? <Loader2 className="spin" size={16} /> : <Save size={16} />}
+          Änderungen speichern
+        </button>
+      </div>
     </form>
   );
 }
@@ -614,6 +695,7 @@ function App() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const orderedSnapshots = useMemo(() => sortedSnapshots(snapshots), [snapshots]);
@@ -683,6 +765,9 @@ function App() {
   async function remove(id: number) {
     if (!confirm("Anlage wirklich löschen?")) return;
     await api(`/api/installations/${id}`, { method: "DELETE" });
+    setEditingId((current) => {
+      return current === id ? null : current;
+    });
     setSelectedId((current) => {
       return current === id ? null : current;
     });
@@ -764,14 +849,31 @@ function App() {
             <InstallationForm onSaved={load} />
             <div className="adminList">
               {installations.map((item) => (
-                <div className="adminRow" key={item.id}>
-                  <div>
-                    <strong>{item.customer_name}</strong>
-                    <span>{item.base_url} · Client: {item.client_id}</span>
+                <div className="adminEntry" key={item.id}>
+                  <div className="adminRow">
+                    <div>
+                      <strong>{item.customer_name}</strong>
+                      <span>{item.base_url} · Client: {item.client_id}</span>
+                    </div>
+                    <div className="adminActions">
+                      <button className="iconOnly" onClick={() => setEditingId((current) => (current === item.id ? null : item.id))} title="Bearbeiten">
+                        <Pencil size={16} />
+                      </button>
+                      <button className="dangerIcon" onClick={() => remove(item.id)} title="Löschen">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
-                  <button className="dangerIcon" onClick={() => remove(item.id)} title="Löschen">
-                    <Trash2 size={16} />
-                  </button>
+                  {editingId === item.id && (
+                    <InstallationEditor
+                      installation={item}
+                      onCancel={() => setEditingId(null)}
+                      onSaved={async () => {
+                        setEditingId(null);
+                        await load();
+                      }}
+                    />
+                  )}
                 </div>
               ))}
             </div>
