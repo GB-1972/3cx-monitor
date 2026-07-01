@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldAlert,
   Trash2,
+  X,
   XCircle
 } from "lucide-react";
 import "./styles.css";
@@ -128,6 +129,18 @@ function sortedSnapshots(snapshots: Snapshot[]): Snapshot[] {
     if (byStatus !== 0) return byStatus;
     return a.customer_name.localeCompare(b.customer_name, "de");
   });
+}
+
+function trunkName(trunk: Record<string, unknown>, index: number): string {
+  return fmt(
+    trunk.Name ||
+      trunk.DisplayName ||
+      trunk.ProviderName ||
+      trunk.ExternalNumber ||
+      trunk.Number ||
+      trunk.AuthID ||
+      `Trunk ${index + 1}`
+  );
 }
 
 function StatusIcon({ status }: { status: Snapshot["status"] | HealthCheck["status"] }) {
@@ -279,6 +292,35 @@ function CheckMark({ check }: { check?: HealthCheck }) {
   );
 }
 
+function TrunkModal({ snapshot, onClose }: { snapshot: Snapshot; onClose: () => void }) {
+  const trunks = snapshot.data.trunks || [];
+
+  return (
+    <div className="modalBackdrop" onClick={onClose}>
+      <section className="modalPanel" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="modalHeader">
+          <div>
+            <h3>SIP-Trunks</h3>
+            <span>{snapshot.customer_name}</span>
+          </div>
+          <button className="iconOnly" onClick={onClose} title="Schließen">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="trunkList">
+          {trunks.length === 0 && <p className="muted">Keine Trunk-Details geliefert.</p>}
+          {trunks.map((trunk, index) => (
+            <div className="trunkRow" key={`${trunkName(trunk, index)}-${index}`}>
+              <strong>{trunkName(trunk, index)}</strong>
+              <Pill status={trunk.IsOnline === false ? "critical" : "ok"} />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function Dashboard({
   snapshots,
   onSelect,
@@ -288,6 +330,7 @@ function Dashboard({
   onSelect: (id: number) => void;
   onReboot: (snapshot: Snapshot) => void;
 }) {
+  const [trunkSnapshot, setTrunkSnapshot] = useState<Snapshot | null>(null);
   const totals = snapshots.reduce(
     (acc, snapshot) => {
       acc.total += 1;
@@ -345,11 +388,30 @@ function Dashboard({
                     <td>
                       <strong>{snapshot.customer_name}</strong>
                     </td>
-                    {overviewCheckNames.map((name) => (
-                      <td className="checkCell" key={name}>
-                        <CheckMark check={checks.find((check) => healthCheckLabel(check.name) === name)} />
-                      </td>
-                    ))}
+                    {overviewCheckNames.map((name) => {
+                      const check = checks.find((item) => healthCheckLabel(item.name) === name);
+                      if (name === "Trunks") {
+                        return (
+                          <td className="checkCell" key={name}>
+                            <button
+                              className="checkButton"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setTrunkSnapshot(snapshot);
+                              }}
+                              title="Trunk-Details anzeigen"
+                            >
+                              <CheckMark check={check} />
+                            </button>
+                          </td>
+                        );
+                      }
+                      return (
+                        <td className="checkCell" key={name}>
+                          <CheckMark check={check} />
+                        </td>
+                      );
+                    })}
                     <td className="actionCell">
                       <button
                         className="dangerText"
@@ -370,6 +432,7 @@ function Dashboard({
           </table>
         </div>
       )}
+      {trunkSnapshot && <TrunkModal snapshot={trunkSnapshot} onClose={() => setTrunkSnapshot(null)} />}
     </section>
   );
 }
@@ -394,7 +457,6 @@ function Detail({
 
   const summary = snapshot.data.summary || {};
   const checks = visibleChecks(snapshot);
-  const trunks = snapshot.data.trunks || [];
   const events = snapshot.data.events || [];
 
   return (
@@ -429,7 +491,7 @@ function Detail({
       </div>
 
       <div className="contentGrid">
-        <div className="panel">
+        <div className="panel widePanel">
           <h3>Health Checks</h3>
           <div className="checkList">
             {checks.length === 0 && <p className="muted">Noch keine Checks vorhanden.</p>}
@@ -440,19 +502,6 @@ function Detail({
                   <strong>{healthCheckLabel(check.name)}</strong>
                   <span>{check.message}</span>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel">
-          <h3>SIP-Trunks</h3>
-          <div className="table">
-            {trunks.length === 0 && <p className="muted">Keine Trunk-Details geliefert.</p>}
-            {trunks.map((trunk, index) => (
-              <div className="row" key={`${fmt(trunk.Id)}-${index}`}>
-                <span>{fmt(trunk.Name || trunk.Number || trunk.ExternalNumber || `Trunk ${index + 1}`)}</span>
-                <Pill status={trunk.IsOnline === false ? "critical" : "ok"} />
               </div>
             ))}
           </div>

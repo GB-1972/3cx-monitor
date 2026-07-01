@@ -145,7 +145,8 @@ a {
 .iconText,
 .ghost,
 .dangerText,
-.dangerIcon {
+.dangerIcon,
+.iconOnly {
   align-items: center;
   border: 0;
   border-radius: 8px;
@@ -193,6 +194,16 @@ a {
   font-weight: 800;
   padding: 0;
   width: 38px;
+}
+
+.iconOnly {
+  aspect-ratio: 1;
+  background: #ffffff;
+  border: 1px solid #d8dee8;
+  color: #243247;
+  min-height: 34px;
+  padding: 0;
+  width: 34px;
 }
 
 .detailActions {
@@ -360,6 +371,22 @@ a {
   width: 76px;
 }
 
+.checkButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  justify-content: center;
+  padding: 2px;
+}
+
+.checkButton:hover,
+.checkButton:focus {
+  outline: 2px solid #9dbcf4;
+  outline-offset: 2px;
+}
+
 .statusCell {
   width: 112px;
 }
@@ -401,6 +428,73 @@ a {
 .checkMark.unknown {
   background: #eef2f6;
   color: #667085;
+}
+
+.modalBackdrop {
+  align-items: center;
+  background: rgb(15 23 42 / 0.48);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 20;
+}
+
+.modalPanel {
+  background: #ffffff;
+  border: 1px solid #dce2ea;
+  border-radius: 8px;
+  box-shadow: 0 20px 55px rgb(15 23 42 / 0.24);
+  max-height: min(680px, calc(100vh - 40px));
+  max-width: 560px;
+  overflow: auto;
+  padding: 16px;
+  width: 100%;
+}
+
+.modalHeader {
+  align-items: center;
+  border-bottom: 1px solid #edf0f5;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding-bottom: 12px;
+}
+
+.modalHeader h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.modalHeader span {
+  color: #667085;
+  display: block;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.trunkList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.trunkRow {
+  align-items: center;
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 9px 11px;
+}
+
+.trunkRow strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .panel {
