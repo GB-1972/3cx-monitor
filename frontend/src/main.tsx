@@ -133,11 +133,17 @@ function sortedSnapshots(snapshots: Snapshot[]): Snapshot[] {
 
 function isPhoneNumberLike(value: string): boolean {
   const compact = value.replace(/[\s()+\-./]/g, "");
-  return compact.length >= 6 && /^\d+$/.test(compact);
+  return compact.length > 0 && /^\d+$/.test(compact);
+}
+
+function nestedValue(value: unknown, key: string): unknown {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>)[key] : undefined;
 }
 
 function trunkName(trunk: Record<string, unknown>, index: number): string {
+  const gateway = nestedValue(trunk, "Gateway");
   const candidates = [
+    nestedValue(gateway, "Name"),
     trunk.DisplayName,
     trunk.FriendlyName,
     trunk.TrunkName,
@@ -149,7 +155,7 @@ function trunkName(trunk: Record<string, unknown>, index: number): string {
     trunk.AuthID
   ];
   const values = candidates.map(fmt).filter((value) => value !== "-");
-  return values.find((value) => !isPhoneNumberLike(value)) || values[0] || `Trunk ${index + 1}`;
+  return values.find((value) => !isPhoneNumberLike(value)) || `Trunk ${index + 1}`;
 }
 
 function StatusIcon({ status }: { status: Snapshot["status"] | HealthCheck["status"] }) {
