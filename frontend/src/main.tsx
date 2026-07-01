@@ -131,16 +131,25 @@ function sortedSnapshots(snapshots: Snapshot[]): Snapshot[] {
   });
 }
 
+function isPhoneNumberLike(value: string): boolean {
+  const compact = value.replace(/[\s()+\-./]/g, "");
+  return compact.length >= 6 && /^\d+$/.test(compact);
+}
+
 function trunkName(trunk: Record<string, unknown>, index: number): string {
-  return fmt(
-    trunk.Name ||
-      trunk.DisplayName ||
-      trunk.ProviderName ||
-      trunk.ExternalNumber ||
-      trunk.Number ||
-      trunk.AuthID ||
-      `Trunk ${index + 1}`
-  );
+  const candidates = [
+    trunk.DisplayName,
+    trunk.FriendlyName,
+    trunk.TrunkName,
+    trunk.Description,
+    trunk.ProviderName,
+    trunk.Name,
+    trunk.ExternalNumber,
+    trunk.Number,
+    trunk.AuthID
+  ];
+  const values = candidates.map(fmt).filter((value) => value !== "-");
+  return values.find((value) => !isPhoneNumberLike(value)) || values[0] || `Trunk ${index + 1}`;
 }
 
 function StatusIcon({ status }: { status: Snapshot["status"] | HealthCheck["status"] }) {
@@ -270,14 +279,40 @@ function InstallationForm({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: unknown }) {
-  return (
-    <div className="metric">
+function SummaryCard({
+  icon,
+  label,
+  value,
+  onClick,
+  title
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: unknown;
+  onClick?: () => void;
+  title?: string;
+}) {
+  const content = (
+    <>
       <div className="metricIcon">{icon}</div>
       <div>
         <span>{label}</span>
         <strong>{fmt(value)}</strong>
       </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button className="metric metricButton" onClick={onClick} title={title}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="metric">
+      {content}
     </div>
   );
 }
@@ -289,6 +324,21 @@ function CheckMark({ check }: { check?: HealthCheck }) {
     <span className={`checkMark ${status}`} title={title}>
       <StatusIcon status={status} />
     </span>
+  );
+}
+
+function TrunksButton({ check, onClick }: { check?: HealthCheck; onClick: () => void }) {
+  return (
+    <button
+      className="checkButton"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      title="Trunk-Details anzeigen"
+    >
+      <CheckMark check={check} />
+    </button>
   );
 }
 
@@ -401,16 +451,7 @@ function Dashboard({
                       if (name === "Trunks") {
                         return (
                           <td className="checkCell" key={name}>
-                            <button
-                              className="checkButton"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setTrunkSnapshot(snapshot);
-                              }}
-                              title="Trunk-Details anzeigen"
-                            >
-                              <CheckMark check={check} />
-                            </button>
+                            <TrunksButton check={check} onClick={() => setTrunkSnapshot(snapshot)} />
                           </td>
                         );
                       }
@@ -454,6 +495,8 @@ function Detail({
   onRefresh: (id: number) => void;
   onReboot: (snapshot: Snapshot) => void;
 }) {
+  const [trunkSnapshot, setTrunkSnapshot] = useState<Snapshot | null>(null);
+
   if (!snapshot) {
     return (
       <section className="empty">
@@ -493,7 +536,13 @@ function Detail({
 
       <div className="metrics">
         <SummaryCard icon={<PhoneCall size={18} />} label="Aktive Gespräche" value={summary.active_calls} />
-        <SummaryCard icon={<Activity size={18} />} label="SIP-Trunks" value={`${fmt(summary.trunks_registered)}/${fmt(summary.trunks_total)}`} />
+        <SummaryCard
+          icon={<Activity size={18} />}
+          label="SIP-Trunks"
+          value={`${fmt(summary.trunks_registered)}/${fmt(summary.trunks_total)}`}
+          onClick={() => setTrunkSnapshot(snapshot)}
+          title="Trunk-Details anzeigen"
+        />
         <SummaryCard icon={<Server size={18} />} label="Version" value={summary.version} />
         <SummaryCard icon={<Clock size={18} />} label="Letztes Backup" value={fmtDate(summary.last_backup)} />
       </div>
@@ -503,15 +552,30 @@ function Detail({
           <h3>Health Checks</h3>
           <div className="checkList">
             {checks.length === 0 && <p className="muted">Noch keine Checks vorhanden.</p>}
-            {checks.map((check) => (
-              <div className="checkItem" key={check.name}>
-                <Pill status={check.status} />
-                <div>
-                  <strong>{healthCheckLabel(check.name)}</strong>
-                  <span>{check.message}</span>
+            {checks.map((check) => {
+              const label = healthCheckLabel(check.name);
+              const content = (
+                <>
+                  <Pill status={check.status} />
+                  <div>
+                    <strong>{label}</strong>
+                    <span>{check.message}</span>
+                  </div>
+                </>
+              );
+              if (label === "Trunks") {
+                return (
+                  <button className="checkItem checkItemButton" key={check.name} onClick={() => setTrunkSnapshot(snapshot)}>
+                    {content}
+                  </button>
+                );
+              }
+              return (
+                <div className="checkItem" key={check.name}>
+                  {content}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -533,6 +597,7 @@ function Detail({
       <div className="footerNote">
         Zuletzt geprüft: {fmtDate(snapshot.checked_at)} · {snapshot.message}
       </div>
+      {trunkSnapshot && <TrunkModal snapshot={trunkSnapshot} onClose={() => setTrunkSnapshot(null)} />}
     </section>
   );
 }

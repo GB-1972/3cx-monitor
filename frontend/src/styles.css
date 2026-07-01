@@ -270,6 +270,18 @@ a {
   padding: 12px;
 }
 
+.metricButton {
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.metricButton:hover,
+.metricButton:focus {
+  outline: 2px solid #9dbcf4;
+  outline-offset: -2px;
+}
+
 .metricIcon {
   align-items: center;
   background: #e7effd;
@@ -561,6 +573,19 @@ a {
 .checkItem {
   align-items: flex-start;
   justify-content: flex-start;
+}
+
+.checkItemButton {
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.checkItemButton:hover,
+.checkItemButton:focus {
+  outline: 2px solid #9dbcf4;
+  outline-offset: -2px;
 }
 
 .checkItem span,
