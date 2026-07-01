@@ -364,6 +364,11 @@ a {
   width: 112px;
 }
 
+.healthTable .actionCell {
+  text-align: right;
+  width: 72px;
+}
+
 .checkMark {
   align-items: center;
   border-radius: 999px;

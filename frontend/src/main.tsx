@@ -323,7 +323,7 @@ function Dashboard({
                 {overviewCheckNames.map((name) => (
                   <th key={name}>{name}</th>
                 ))}
-                <th>Aktion</th>
+                <th className="actionCell">Aktion</th>
               </tr>
             </thead>
             <tbody>
@@ -350,7 +350,7 @@ function Dashboard({
                         <CheckMark check={checks.find((check) => healthCheckLabel(check.name) === name)} />
                       </td>
                     ))}
-                    <td>
+                    <td className="actionCell">
                       <button
                         className="dangerText"
                         onClick={(event) => {
